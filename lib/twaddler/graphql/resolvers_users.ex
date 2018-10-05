@@ -10,11 +10,18 @@ defmodule Twaddler.GraphQL.Resolvers.Users do
   end
 
   def get_user_by_id(user_id, _args, %{context: %{loader: loader}}) do
-    loader
-    |> Dataloader.load(:twaddler, User, user_id)
+    Dataloader.load(loader, :ecto_source, User, user_id)
     |> on_load(fn loader ->
-      user = Dataloader.get(loader, :twaddler, User, user_id)
+      user = Dataloader.get(loader, :ecto_source, User, user_id)
       {:ok, user}
+    end)
+  end
+
+  def get_users_by_uuids(user_uuids, _args, %{context: %{loader: loader}}) do
+    Dataloader.load_many(loader, :uuid_source, User, user_uuids)
+    |> on_load(fn loader ->
+      users = Dataloader.get_many(loader, :uuid_source, User, user_uuids)
+      {:ok, users}
     end)
   end
 end

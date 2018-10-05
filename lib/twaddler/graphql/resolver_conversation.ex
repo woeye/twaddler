@@ -1,34 +1,39 @@
 defmodule Twaddler.GraphQL.Resolvers.Conversations do
-  import Ecto.Query
   import Absinthe.Resolution.Helpers
+  import Ecto.Query
   alias Twaddler.Repo
-  alias Twaddler.Db.{User, Conversation}
+  alias Twaddler.Db.{Conversation}
 
   def get_conversation_by_id(conversation_id, _args, %{context: %{loader: loader}}) do
-    loader
-    |> Dataloader.load(:twaddler, Conversation, conversation_id)
+    Dataloader.load(loader, :ecto_source, Conversation, conversation_id)
     |> on_load(fn loader ->
-      conversation = Dataloader.get(loader, :twaddler, Conversation, conversation_id)
+      conversation = Dataloader.get(loader, :ecto_source, Conversation, conversation_id)
       {:ok, conversation}
     end)
+  end
+
+  def get_conversations(_parent, %{:user_id => user_id}, _) do
+    ids = [user_id]
+    query = from c in Conversation,
+      where: fragment("? @> ?::varchar[]", c.participants, ^ids),
+      order_by: [desc: c.id],
+      select: c
+
+    # Prepend item to list, not append. Because: https://aneta-bielska.github.io/blog/benchmarking-elixir-lists-and-tuples-example.html
+    conversations = Repo.all(query)
+    {:ok, conversations}
   end
 
   def start_conversation(_parent, %{:topic => topic, :participants => participants}, _res) do
     IO.puts "start_conversation with topic"
 
-    participants
-    |> Enum.uniq
-    |> check_existing_conversation
-    |> verify_participant_ids
-    |> case do
-      {:error, reason} -> {:error, reason}
-      {:reuse, uuid} -> {:ok, %{:uuid => uuid}}
-      {:ok, ids} ->
-        Conversation.changeset(%Conversation{}, %{
-          :topic => topic,
-          :participants => ids
-        })
-        |> Repo.insert
+    changeset = Conversation.changeset(%Conversation{}, %{
+      topic: topic,
+      participants: participants
+    })
+    case Repo.insert(changeset) do
+      {:ok, conversation} -> {:ok, conversation}
+      {:error, changeset} -> {:error, Enum.reduce(changeset.errors, [], &handle_error/2)}
     end
   end
 
@@ -37,39 +42,7 @@ defmodule Twaddler.GraphQL.Resolvers.Conversations do
     start_conversation(parent, %{:participants => participants, :topic => ""}, res)
   end
 
-  defp check_existing_conversation(ids) do
-    query =
-      from c in Conversation,
-      where: fragment("? <@ ?::varchar[]", c.participants, ^ids),
-      select: c.uuid,
-      limit: 1
-    case Repo.one(query) do
-      nil -> ids
-      uuid -> {:reuse, uuid}
-    end
-  end
-
-  defp verify_participant_ids({:reuse, uuid}) do
-    {:reuse, uuid}
-  end
-
-  defp verify_participant_ids(ids) when length(ids) < 2 do
-    {:error, "Not enough unique user UUIDs were given"}
-  end
-
-  defp verify_participant_ids(ids) when length(ids) > 2 do
-    {:error, "Group chat is not supported yet"}
-  end
-
-  defp verify_participant_ids(ids) do
-    db_ids = Repo.all(from u in User, where: u.uuid in ^ids, select: u.uuid)
-
-    ids
-    |> Enum.filter(&!Enum.member?(db_ids, &1))
-    |> Enum.join(", ")
-    |> case do
-      "" -> {:ok, ids}
-      unknown_ids -> {:error, "Unknown UUIDs: #{unknown_ids}"}
-    end
+  defp handle_error({_key, {reason, _extra}}, acc) do
+    [reason | acc]
   end
 end

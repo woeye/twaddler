@@ -32,7 +32,7 @@ function appendMessage(msg) {
 }
 
 const query = `{
-    getMessages(conversationId: "45f7b8e4-a477-4cac-908a-5e8d62ee2f66", limit: 50, offset: 0) {
+    getMessages(conversationId: "1c610191-565d-4380-89a6-0606c435b4c8", limit: 10, offset: 0) {
         user { username }
         posted
         text
@@ -57,7 +57,7 @@ const operation = `
 
 const notifier = AbsintheSocket.send(appSocket, {
     operation,
-    variables: {convId: "45f7b8e4-a477-4cac-908a-5e8d62ee2f66"}
+    variables: {convId: "1c610191-565d-4380-89a6-0606c435b4c8"}
 });
 
 const logEvent = eventName => (...args) => console.log(eventName, ...args);
@@ -80,7 +80,7 @@ input.addEventListener("keyup", evt => {
         // console.log(input.value);
         const mutation = `mutation {
             postMessage(
-                conversationId: "45f7b8e4-a477-4cac-908a-5e8d62ee2f66",
+                conversationId: "1c610191-565d-4380-89a6-0606c435b4c8",
                 userId:"428ef4e8-f5f8-44c1-9d78-b857c9c4499d",
                 text: "${input.value}"
             ) {

@@ -5,9 +5,12 @@ defmodule Twaddler.GraphQL.Schema do
   alias Twaddler.GraphQL.Resolvers
 
   def context(ctx) do
-    source = Dataloader.Ecto.new(Twaddler.Repo)
+    ecto_source = Dataloader.Ecto.new(Twaddler.Repo)
+    uuid_source = Dataloader.KV.new(&Twaddler.Db.UUIDLoader.load_by_uuids/2)
+
     loader = Dataloader.new
-      |> Dataloader.add_source(:twaddler, source)
+      |> Dataloader.add_source(:ecto_source, ecto_source)
+      |> Dataloader.add_source(:uuid_source, uuid_source)
 
     Map.put(ctx, :loader, loader)
   end
@@ -15,6 +18,11 @@ defmodule Twaddler.GraphQL.Schema do
   query do
     field :get_users, list_of(:user) do
       resolve &Resolvers.Users.get_users/3
+    end
+
+    field :get_conversations, list_of(:conversation) do
+      arg :user_id, non_null(:string)
+      resolve &Resolvers.Conversations.get_conversations/3
     end
 
     field :get_messages, list_of(:message) do
@@ -56,13 +64,10 @@ defmodule Twaddler.GraphQL.Schema do
       end
 
       trigger :post_message, topic: fn message ->
-        IO.inspect(message)
-        IO.inspect(message.conversation.uuid)
         message.conversation.uuid
       end
 
       resolve fn message, _, _ ->
-        IO.inspect(message)
         {:ok, message}
       end
     end

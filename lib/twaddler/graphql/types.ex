@@ -22,6 +22,9 @@ defmodule Twaddler.GraphQL.Types do
   object :conversation do
     field :uuid, :id
     field :topic, :string
+    field :participants, list_of(:user) do
+      resolve &Resolvers.Users.get_users_by_uuids(&1.participants, &2, &3)
+    end
   end
 
   object :message do

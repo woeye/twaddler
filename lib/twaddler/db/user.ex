@@ -12,6 +12,7 @@ defmodule Twaddler.Db.User do
     timestamps()
 
     many_to_many :roles, Twaddler.Db.Role, join_through: "users_roles"
+    # many_to_many :conversations, Twaddler.Db.Conversation, join_through: "users_conversations"
   end
 
   def changeset(user, attrs) do

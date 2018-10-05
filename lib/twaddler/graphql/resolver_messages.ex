@@ -11,7 +11,7 @@ defmodule Twaddler.GraphQL.Resolvers.Messages do
       where: c.uuid == ^uuid,
       limit: ^limit,
       offset: ^offset,
-      order_by: [desc: c.id],
+      order_by: [desc: m.id],
       select: m
 
     # Prepend item to list, not append. Because: https://aneta-bielska.github.io/blog/benchmarking-elixir-lists-and-tuples-example.html
@@ -20,18 +20,29 @@ defmodule Twaddler.GraphQL.Resolvers.Messages do
   end
 
   def post_message(_parent, %{:conversation_id => conv_uuid, :user_id => user_uuid, :text => text}, _resolution) do
-    conversation = Conversation |> Repo.get_by(uuid: conv_uuid)
-    user = User |> Repo.get_by(uuid: user_uuid)
+    with {:ok, conversation} <- load_by_uuid(Conversation, "conversation", conv_uuid),
+      {:ok, user} <- load_by_uuid(User, "user", user_uuid)
+    do
+      changeset = Message.changeset(%Message{}, %{
+        text: text,
+        user: user,
+        conversation: conversation
+      })
+      case Repo.insert(changeset) do
+        {:ok, message} -> {:ok, message}
+        {:error, changeset} -> {:error, changeset.error}
+      end
+    else
+      err -> err
+    end
+  end
 
-    changeset = Message.changeset(%Message{}, %{
-      text: text,
-      user: user,
-      conversation: conversation
-    })
-
-    case Repo.insert(changeset) do
-      {:ok, message} -> {:ok, message}
-      {:error, changeset} -> {:error, changeset.error}
+  defp load_by_uuid(entity, name, uuid) do
+    entity
+    |> Repo.get_by(uuid: uuid)
+    |> case do
+      nil -> {:error, "Invalid UUID for #{name}: #{uuid}"}
+      conv -> {:ok, conv}
     end
   end
 end
