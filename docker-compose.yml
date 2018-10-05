@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:10-alpine
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data/pgdata
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_DB=twaddler_db
+      - POSTGRES_USER=elixir
+      - POSTGRES_PASSWORD=elixir
+    ports:
+      - 127.0.0.1:5432:5432
