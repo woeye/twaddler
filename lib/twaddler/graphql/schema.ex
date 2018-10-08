@@ -16,15 +16,24 @@ defmodule Twaddler.GraphQL.Schema do
   end
 
   query do
-    field :get_users, list_of(:user) do
-      resolve &Resolvers.Users.get_users/3
+    @desc "Authenticates a user with the given username and password. Returns the user's token on success."
+    field :authenticate_user, :string do
+      arg :username, non_null(:string)
+      arg :password, non_null(:string)
+      resolve &Resolvers.Users.authenticate_user/3
     end
 
+    # field :get_users, list_of(:user) do
+    #   resolve &Resolvers.Users.get_users/3
+    # end
+
+    @desc "Gets a list of all conversations the current user has participated in."
     field :get_conversations, list_of(:conversation) do
       arg :user_id, non_null(:string)
       resolve &Resolvers.Conversations.get_conversations/3
     end
 
+    @desc "Returns the list of all messages of a given conversation."
     field :get_messages, list_of(:message) do
       arg :conversation_id, non_null(:string)
       arg :limit, non_null(:integer)

@@ -2,6 +2,7 @@ defmodule Twaddler.Db.User do
   use Ecto.Schema
   import Ecto.Changeset
   import Twaddler.Db.Common
+  import Twaddler.Helpers
 
   schema "users" do
     field :uuid, :string
@@ -20,10 +21,10 @@ defmodule Twaddler.Db.User do
     |> cast(attrs, [:username, :email, :password])
     |> validate_required([:username, :email, :password])
     |> check_uuid
-    |> hash_password
+    |> do_hash_password
   end
 
-  defp hash_password(changeset) do
+  defp do_hash_password(changeset) do
     case get_change(changeset, :password) do
       nil -> changeset
       password -> put_change(changeset, :password_hash, Comeonin.Argon2.hashpwsalt(password))

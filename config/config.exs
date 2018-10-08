@@ -13,6 +13,7 @@ config :twaddler,
 config :twaddler, TwaddlerWeb.Endpoint,
   url: [host: "localhost"],
   secret_key_base: "pA6lCVILjllEH054Ct8SdO7PVLqbLJamJLG8ViJD0wzmtOHrQfUrt6mzbSxVErTm",
+  token_salt: "artischockensindtotallecker!",
   render_errors: [view: TwaddlerWeb.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Twaddler.PubSub,
            adapter: Phoenix.PubSub.PG2]
