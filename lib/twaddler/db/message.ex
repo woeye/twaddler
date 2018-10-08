@@ -14,10 +14,9 @@ defmodule Twaddler.Db.Message do
 
   def changeset(message, attrs) do
     message
-    |> cast(attrs, [:text])
-    |> validate_required([:text])
+    |> cast(attrs, [:text, :user_id])
+    |> validate_required([:text, :user_id])
     |> check_uuid
-    |> put_assoc(:user, attrs.user)
     |> put_assoc(:conversation, attrs.conversation)
   end
 end

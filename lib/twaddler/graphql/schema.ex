@@ -29,7 +29,6 @@ defmodule Twaddler.GraphQL.Schema do
 
     @desc "Gets a list of all conversations the current user has participated in."
     field :get_conversations, list_of(:conversation) do
-      arg :user_id, non_null(:string)
       resolve &Resolvers.Conversations.get_conversations/3
     end
 
@@ -51,7 +50,6 @@ defmodule Twaddler.GraphQL.Schema do
 
     field :post_message, :message do
       arg :conversation_id, non_null(:id)
-      arg :user_id, non_null(:id)
       arg :text, non_null(:string)
       resolve &Resolvers.Messages.post_message/3
     end

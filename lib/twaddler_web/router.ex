@@ -11,6 +11,11 @@ defmodule TwaddlerWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug TwaddlerWeb.Context
+  end
+
+  pipeline :graphql do
+    plug TwaddlerWeb.Context
   end
 
   scope "/", TwaddlerWeb do
@@ -20,7 +25,7 @@ defmodule TwaddlerWeb.Router do
   end
 
   scope "/api" do
-    pipe_through :api
+    pipe_through :graphql
 
     forward "/graphiql", Absinthe.Plug.GraphiQL,
        schema: Twaddler.GraphQL.Schema

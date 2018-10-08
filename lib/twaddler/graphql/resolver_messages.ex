@@ -4,28 +4,28 @@ defmodule Twaddler.GraphQL.Resolvers.Messages do
   alias Twaddler.Repo
   alias Twaddler.Db.{User, Conversation, Message}
 
-  def get_messages(_parent, %{:conversation_id => uuid, :limit => limit, :offset => offset}, _resolution) do
-    query = from m in Message,
-      join: c in Conversation,
-      where: m.conversation_id == c.id,
-      where: c.uuid == ^uuid,
-      limit: ^limit,
-      offset: ^offset,
-      order_by: [desc: m.id],
-      select: m
+  def get_messages(_parent, %{conversation_id: uuid, limit: limit, offset: offset}, %{context: %{current_user: current_user}}) do
+    # Make sure the current user is a member of the conversation
+    with {:ok, conv} <- load_conversation(uuid, current_user.uuid) do
+      query = from m in Message,
+        where: m.conversation_id == ^conv.id,
+        limit: ^limit,
+        offset: ^offset,
+        order_by: [desc: m.id]
 
-    # Prepend item to list, not append. Because: https://aneta-bielska.github.io/blog/benchmarking-elixir-lists-and-tuples-example.html
-    messages = Repo.all(query) |> Enum.reverse
-    {:ok, messages}
+      # Prepend item to list, not append. Because: https://aneta-bielska.github.io/blog/benchmarking-elixir-lists-and-tuples-example.html
+      messages = Repo.all(query) |> Enum.reverse
+      {:ok, messages}
+    else
+      _ -> {:error, "Access denied"}
+    end
   end
 
-  def post_message(_parent, %{:conversation_id => conv_uuid, :user_id => user_uuid, :text => text}, _resolution) do
-    with {:ok, conversation} <- load_by_uuid(Conversation, "conversation", conv_uuid),
-      {:ok, user} <- load_by_uuid(User, "user", user_uuid)
-    do
+  def post_message(_parent, %{conversation_id: conv_uuid, text: text}, %{context: %{current_user: current_user}}) do
+    with {:ok, conversation} <- load_conversation(conv_uuid, current_user.uuid) do
       changeset = Message.changeset(%Message{}, %{
         text: text,
-        user: user,
+        user_id: current_user.id,
         conversation: conversation
       })
       case Repo.insert(changeset) do
@@ -33,15 +33,18 @@ defmodule Twaddler.GraphQL.Resolvers.Messages do
         {:error, changeset} -> {:error, changeset.error}
       end
     else
-      err -> err
+     _ -> {:error, "Access denied"}
     end
   end
 
-  defp load_by_uuid(entity, name, uuid) do
-    entity
-    |> Repo.get_by(uuid: uuid)
-    |> case do
-      nil -> {:error, "Invalid UUID for #{name}: #{uuid}"}
+  defp load_conversation(uuid, user_uuid) do
+    ids = [user_uuid]
+    query = from c in Conversation,
+      where: c.uuid == ^uuid,
+      where: fragment("? @> ?::varchar[]", c.participants, ^ids),
+      order_by: [desc: c.id]
+    case Repo.one(query) do
+      nil -> {:error, "No such conversation"}
       conv -> {:ok, conv}
     end
   end
